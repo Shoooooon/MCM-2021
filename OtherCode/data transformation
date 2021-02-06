@@ -45,14 +45,16 @@ df = pd.read_csv("Data\wildfire data 2020-2021 + cluster.csv")
 
 df.head()
 
-df['centroid'] = list(zip(df.cluster_centroid_lat, df.cluster_centroid_long))
+df['centroid_geodetic'] = list(zip(df.cluster_centroid_lat, df.cluster_centroid_long))
 df.drop(['cluster_centroid_lat', 'cluster_centroid_long'],axis = 1)
 
 
-df_firecluster = pd.DataFrame(df.groupby(['acq_date',"cluster",'centroid'], group_keys=False)[['latitude', 'longitude']].apply(lambda x: x.to_records(index=False).tolist()).reset_index(name='fires.lonlat'))
+df_firecluster = pd.DataFrame(df.groupby(['acq_date',"cluster",'centroid_geodetic'], group_keys=False)[['latitude', 'longitude']].apply(lambda x: x.to_records(index=False).tolist()).reset_index(name='fires_geodetic'))
 
-df_firecluster["fires.cart"] = df_firecluster.apply(lambda x:transform(x.fires,x.centroid), axis=1)
+df_firecluster["fires_cart"] = df_firecluster.apply(lambda x:transform(x.fires_geodetic,x.centroid_geodetic), axis=1)
 df_firecluster["centroid.cart"] = df_firecluster.apply(lambda x:(0,0), axis=1)
 
 df_firecluster.head()
-df_firecluster
+
+df_firecluster.to_csv('saved_data.csv',
+        sep=',',index=True)
