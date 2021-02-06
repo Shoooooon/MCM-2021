@@ -1,5 +1,7 @@
 import GeneralDroneGa as gg
 import concurrent.futures
+import numpy as np
+import cProfile
 
 '''
 The goal of this file is to:
@@ -39,6 +41,8 @@ def runTest(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, gener
         tasks[i] = executor.submit(lambda: gg.runGA(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound) [1:])
     for i in range(n):
         output[i] = tasks[i].result()
+    if None in output:
+        return None
     return output
 
 def fire_coverage_distribution(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
@@ -53,15 +57,20 @@ Each run is a list of (best values, droneCount) tuples
 def runTest_all_gen_output(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     tasks = [None] * n
     executor = concurrent.futures.ThreadPoolExecutor()
+    # Parallelize, but only make like 10 threads bc the 100 thread overhead killed it
     for i in range(n):
-        tasks[i] = executor.submit(lambda: [x[1:] for x in gg.runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)])
-    return [task.result() for task in tasks]
+        tasks[i] = [x[1:] for x in gg.runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)]
+    g = [task for task in tasks]
+    if None in g:
+        return None
+    return g
 
 
 def distribution_by_runs(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     distributions = [0] * (generations + 1)
     data = runTest_all_gen_output(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)
-    print(data)
+    if data == None:
+        return None
     for j in range(generations + 1):
         jthRuns = [datum[j] for datum in data]
         dist = [run[0] for run in jthRuns]
@@ -85,7 +94,15 @@ testCase3 = [(29,-10),(-30,52),(10,0),(56,-2),(32,8),(18,41),(0,25),(40,15)]
 # print(fire_coverage_distribution(50, 4, testCase3, 10, 30, 3, -60, 60, -60, 60))
 # print(fire_coverage_distribution(50, 4, testCase3, 10, 30, 6, -60, 60, -60, 60))
 
-[print(i) for i in distribution_by_runs(50, 4, testCase3, 10, 30, 10, -60, 60, -60, 60)]
+# [print(i) for i in distribution_by_runs(50, 4, testCase3, 10, 30, 10, -60, 60, -60, 60)]
+
+testCase4 = [(np.random.uniform(-100.0,100.0),np.random.uniform(-100.0,100.0)) for i in range(20)]
+# a = distribution_by_runs(50, 10, testCase4, 10, 30, 2, -100, 100, -100, 100)
+# [print(i) for i in a]
+
+# [print(sum([cover*frequency/float(50) for (cover,frequency) in i.items()])) for i in a]
+
+cProfile.run('distribution_by_runs(50, 10, testCase4, 10, 30, 2, -100, 100, -100, 100)')
 
 
 '''
