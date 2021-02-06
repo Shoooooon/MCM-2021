@@ -11,7 +11,7 @@ Restrictions/Requirements:
 
 
 
-EOC_FROM_FIRE = 0                          # Minimum distance EOC needs to be from an active fire point
+EOC_FROM_FIRE = 1                          # Minimum distance EOC needs to be from an active fire point
 RECHARGE_TIME = 1.75                        # Time it takes dronesto recharge
 DRONE_SPEED = 1.2 * 60                           # km/hr
 BATTERY_LIFE = 2.5                          # Hours before recharge required
@@ -33,7 +33,8 @@ def euclidean_dist(a,b):
 Computes "drone hours per hour" of potential drone position
 '''
 def dc_val(drone, eoc):
-    flightTime = euclidean_dist(eoc,drone)/DRONE_SPEED
+    # flightTime = euclidean_dist(eoc,drone)/DRONE_SPEED
+    flightTime = 0                                                          # Assuming firefighters set manually and are there to replace/recharge
     return (BATTERY_LIFE + RECHARGE_TIME)/(BATTERY_LIFE - 2*flightTime)
 
 '''
@@ -115,18 +116,18 @@ def intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, h
     drones = set()
     dc = 0
     while dc < droneCount:                                      # Unnecessary condition here, but feels nice
-        node = random.choice(tuple(network))                    # Choose node to be in range of, and set point in range of choice
-        xNew = np.random.uniform(-DRONE_SIGNAL_RANGE,DRONE_SIGNAL_RANGE)
+        base = random.choice(tuple(network))                    # Choose node to be in range of, and set point in range of choice
+        theta = np.random.uniform(0.0, 2*np.pi)
+        r = np.random.uniform(0.9, 1)                           # Forces drones sort of kind of apart in first approximation since tightly clustered drones are useless
+        xNew = r*DRONE_SIGNAL_RANGE*np.cos(theta) + base[0]
         xNew = min(max(xNew, lowXbound), highXbound) 
-        ySpread = np.sqrt(DRONE_SIGNAL_RANGE**2 - xNew**2)
-        yNew = np.random.uniform(-ySpread, ySpread)
+        yNew = r*DRONE_SIGNAL_RANGE*np.sin(theta) + base[1]
         yNew = min(max(yNew, lowYbound), highYbound) 
-        
-        drone = (xNew, yNew)                                    # If we can afford the drone, add it. Else, don't.
+        drone = (xNew, yNew)                                    # If we can afford the drone, add it. Else, don't. Now, this is basically just counting drones.
         if dc_val(drone, eoc) > 0:
             dc += dc_val(drone, eoc)
             # print(dc, droneCount)
-            if dc < droneCount:
+            if dc <= droneCount:
                 network.add(drone)
                 drones.add(drone)
 
@@ -136,18 +137,18 @@ def intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, h
 '''
 Make all gen0 proposals that will later be evolved over time - done
 '''
-def intialize_parents(droneCount, fireCoords, batchSize, lowXbound, highXbound, lowYbound, highYbound):
+def intialize_parents(droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound):
     # Assume there is a safe place to put EOC - fix later if necessary
-    return [intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound) for i in range(batchSize)]
+    return cull([intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound) for i in range(unculledBatchSize)], culledBatchSize, lambda kid: fitness(kid, droneCount, fireCoords))
 
 '''
 Make kid off of 1 proposal - done
 '''    
-def spawn_kid(parent, fireCoords, lowXbound, highXbound, lowYbound, highYbound):
+def spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound):
     kid = [parent[0],set()]
     
     # Try to move EOC randomly, only allow if safe distance from fire
-    displacement = (np.random.uniform(-1.0,1.0), np.random.uniform(-1.0,1.0))
+    displacement = (np.random.uniform(-6.0, 6.0), np.random.uniform(-6.0, 6.0))
     newEOC = np.add(parent[0],displacement)
     newEOC = (min(max(newEOC[0], lowXbound), highXbound), min(max(newEOC[1], lowYbound), highYbound))
     safeEOC = True
@@ -159,22 +160,41 @@ def spawn_kid(parent, fireCoords, lowXbound, highXbound, lowYbound, highYbound):
 
     # Move the drones randomly
     for drone in parent[1]:
-        # Small chance of killing drone (1%)
-        if np.random.uniform(0,100) < 99:
-            displacement = (np.random.uniform(-1.0,1.0), np.random.uniform(-1.0,1.0))
+        # Small chance of killing and replacing drone (2%) - In case high number of drones and we get a poorly seeded drone in an otherwise good candidate
+        # On larger fire areas, I'm hoping this will be a useful Mulligan
+        if np.random.uniform(0,100) < 98:
+            displacement = (np.random.uniform(-10.0,10.0), np.random.uniform(-10.0,10.0))               # This makes a very big deal - it is good to be large
             newDrone = np.add(drone,displacement)
             newDrone = (min(max(newDrone[0], lowXbound), highXbound), min(max(newDrone[1], lowYbound), highYbound))
             kid[1].add(newDrone)
+        else:
+            bestScore = fitness(parent, droneCount, fireCoords)
+            best = drone
+            for i in range(15):
+                copy = parent[1] - {drone}
+                base = random.choice(tuple(parent[1]))                    # Choose node to be in range of, and set point in range of choice
+                theta = np.random.uniform(0.0, 2*np.pi)
+                r = np.random.uniform(0.9, 1)                           # Forces drones sort of kind of apart in first approximation since tightly clustered drones are useless
+                xNew = r*DRONE_SIGNAL_RANGE*np.cos(theta) + base[0]
+                xNew = min(max(xNew, lowXbound), highXbound) 
+                yNew = r*DRONE_SIGNAL_RANGE*np.sin(theta) + base[1]
+                yNew = min(max(yNew, lowYbound), highYbound) 
+                newDrone = (xNew, yNew)                                    # If we can afford the drone, add it. Else, don't. Now, this is basically just counting drones.
+                if fitness([parent[0],copy.union({newDrone})], droneCount, fireCoords) > bestScore:
+                    bestScore = fitness([parent[0], copy.union({newDrone})], droneCount, fireCoords)
+                    best = newDrone
+            kid[1].add(best)
 
-    # Small chance of spawning drone (1%)
-    if np.random.uniform(0,100) > 99:
-        node = random.choice(tuple([parent[0]] + list(parent[1])))                    # Choose node to be in range of, and set point in range of choice
-        xNew = np.random.uniform(-DRONE_SIGNAL_RANGE,DRONE_SIGNAL_RANGE)
-        xNew = min(max(xNew, lowXbound), highXbound) 
-        ySpread = np.sqrt(DRONE_SIGNAL_RANGE**2 - xNew**2)
-        yNew = np.random.uniform(-ySpread, ySpread)
-        yNew = min(max(yNew, lowYbound), highYbound) 
-        kid[1].add((xNew, yNew))
+
+    # # Small chance of spawning drone (1%)
+    # if np.random.uniform(0,100) > 99:
+    #     node = random.choice(tuple([parent[0]] + list(parent[1])))                    # Choose node to be in range of, and set point in range of choice
+    #     xNew = np.random.uniform(-DRONE_SIGNAL_RANGE,DRONE_SIGNAL_RANGE)
+    #     xNew = min(max(xNew, lowXbound), highXbound) 
+    #     ySpread = np.sqrt(DRONE_SIGNAL_RANGE**2 - xNew**2)
+    #     yNew = np.random.uniform(-ySpread, ySpread)
+    #     yNew = min(max(yNew, lowYbound), highYbound) 
+    #     kid[1].add((xNew, yNew))
         
     return kid
    
@@ -189,13 +209,14 @@ def cull(kids, batchSize, fitnessFunc):
 
 '''
 Given gen n, generate gen n+1
+Note that the parents can survive into the next generation if they are good. - massive improvement to performance
 '''
 def kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound):
-    kids = []
+    kids = [] + gen
     babiesPer = int(unculledBatchSize/1 + len(gen[1]))
     for parent in gen:
         for i in range(babiesPer):
-            kids.append(spawn_kid(parent, fireCoords, lowXbound, highXbound, lowYbound, highYbound))
+            kids.append(spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound))
     return cull(kids, culledBatchSize, lambda kid: fitness(kid, droneCount, fireCoords))
 
 
@@ -204,20 +225,20 @@ def kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSiz
 Inputs:
     droneCount - number of drones available
     fireCoords - list of coords of fires as tuples
-    batchSize - number of individual in ea generation
+    culledbatchSize - number of individual in ea generation after culling
     generations - number of generations to generate
     lowXbound - lower bound on drone x coordinate
     highXbound - upper bound on drone x coordinate
     lowYbound - lower bound on drone y coordinate
     highYbound - upper bound on drone y coordinate
 '''
-def runGA(droneCount, fireCoords, batchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
+def runGA(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     # Set initial generation
-    gen = intialize_parents(droneCount, fireCoords, batchSize, lowXbound, highXbound, lowYbound, highYbound)
+    gen = intialize_parents(droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound)
 
     # Mutate, cull, and repeat
     for i in range(generations):
-        gen = kids_and_cull(gen, droneCount, fireCoords, batchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound)
+        gen = kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound)
 
     # Choose best survivor
     fit = 0
