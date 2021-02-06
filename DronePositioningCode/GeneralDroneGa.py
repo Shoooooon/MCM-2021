@@ -11,9 +11,9 @@ Restrictions/Requirements:
 
 
 
-EOC_FROM_FIRE = 1                          # Minimum distance EOC needs to be from an active fire point
+EOC_FROM_FIRE = 1                           # Minimum distance EOC needs to be from an active fire point
 RECHARGE_TIME = 1.75                        # Time it takes dronesto recharge
-DRONE_SPEED = 1.2 * 60                           # km/hr
+DRONE_SPEED = 1.2 * 60                      # km/hr
 BATTERY_LIFE = 2.5                          # Hours before recharge required
 DRONE_SIGNAL_RANGE = 20                     # Drone signal range (km)
 e = 2.718281
@@ -115,13 +115,18 @@ Make one gen0 proposal
 def intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound):
     # Assume there is a safe place to put EOC - fix later if necessary
     EOCSafe = False
-    while not EOCSafe:
+    trials = 10000
+    while not EOCSafe and trials >=0:
         EOCSafe = True
+        trials -= 1
         eoc = (np.random.uniform(lowXbound,highXbound),np.random.uniform(lowXbound,highXbound))
         for fire in fireCoords:
             if euclidean_dist(fire, eoc) < EOC_FROM_FIRE:
                 EOCSafe = False
                 break
+    if trials <= 0:
+        print('Could not get safe EOC.')
+        return None
     
     # Pick points in range of current setup until cannot add drones
     network = {eoc}
@@ -151,6 +156,10 @@ Make all gen0 proposals that will later be evolved over time - done
 '''
 def intialize_parents(droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound):
     # Assume there is a safe place to put EOC - fix later if necessary
+    a = [intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound) for i in range(unculledBatchSize)]
+    a = list(filter(lambda x: x != None, a))
+    if len(a) < unculledBatchSize/2.0:
+        return None
     return cull([intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound) for i in range(unculledBatchSize)], len(fireCoords), culledBatchSize, lambda kid: fitness(kid, droneCount, fireCoords), 0, 1)
 
 '''
@@ -242,6 +251,7 @@ def cull(kids, fireCount, batchSize, fitnessFunc, runNum, totalRuns):
     # scale = 3
     # adjustfit = lambda fit: scale * float(fitnessFunc(fit) - 1500)/fireCount
     # return random.choices(kids, weights=[e**(adjustfit(kid)/temp) for kid in kids], k = batchSize)
+
 '''
 Given gen n, generate gen n+1
 Note that the parents can survive into the next generation if they are good. - massive improvement to performance 
@@ -266,13 +276,13 @@ Inputs:
     highXbound - upper bound on drone x coordinate
     lowYbound - lower bound on drone y coordinate
     highYbound - upper bound on drone y coordinate
-
-
 '''
 def runGA(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     # Set initial generation
     gen = intialize_parents(droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound)
 
+    if gen == None:
+        return None
     # Mutate, cull, and repeat
     for i in range(generations):
         gen = kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound,i+1,generations)
@@ -286,6 +296,8 @@ def runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatch
     bests = []
     # Set initial generation
     gen = intialize_parents(droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound)
+    if gen == None:
+        return None
     bests.append(best_survivor(gen, droneCount, fireCoords))
 
     # Mutate, cull, and repeat
