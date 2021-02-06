@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import matplotlib
 
 '''
 Restrictions/Requirements:
@@ -16,6 +17,15 @@ DRONE_SPEED = 1.2 * 60                           # km/hr
 BATTERY_LIFE = 2.5                          # Hours before recharge required
 DRONE_SIGNAL_RANGE = 20                     # Drone signal range (km)
 
+
+
+'''
+Helper Functions
+'''
+
+'''
+Compute euclidean distance bet two 2-tuples
+'''
 def euclidean_dist(a,b):
     return np.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
 
@@ -25,6 +35,22 @@ Computes "drone hours per hour" of potential drone position
 def dc_val(drone, eoc):
     flightTime = euclidean_dist(eoc,drone)/DRONE_SPEED
     return (BATTERY_LIFE + RECHARGE_TIME)/(BATTERY_LIFE - 2*flightTime)
+
+'''
+Returns overall drone hours per hour of a proposal.
+'''
+def overall_dc_val(drones,eoc):
+    return sum([dc_val(drone,eoc) for drone in drones])
+
+
+
+
+
+
+
+'''
+Major functions
+'''
 
 '''
 Shitty fitness function for drone placement
@@ -108,14 +134,14 @@ def intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, h
     
 
 '''
-Make all gen0 proposals that will later be evolved over time
+Make all gen0 proposals that will later be evolved over time - done
 '''
 def intialize_parents(droneCount, fireCoords, batchSize, lowXbound, highXbound, lowYbound, highYbound):
     # Assume there is a safe place to put EOC - fix later if necessary
     return [intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound) for i in range(batchSize)]
 
 '''
-Make kid off of 1 proposal
+Make kid off of 1 proposal - done
 '''    
 def spawn_kid(parent, fireCoords, lowXbound, highXbound, lowYbound, highYbound):
     kid = [parent[0],set()]
@@ -185,7 +211,7 @@ Inputs:
     lowYbound - lower bound on drone y coordinate
     highYbound - upper bound on drone y coordinate
 '''
-def main(droneCount, fireCoords, batchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
+def runGA(droneCount, fireCoords, batchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     # Set initial generation
     gen = intialize_parents(droneCount, fireCoords, batchSize, lowXbound, highXbound, lowYbound, highYbound)
 
@@ -200,9 +226,9 @@ def main(droneCount, fireCoords, batchSize, unculledBatchSize, generations, lowX
         if fitness(survivor, droneCount, fireCoords) > fit:
             fit = fitness(survivor, droneCount, fireCoords)
             best = survivor
-    print(survivor, fitness(survivor, droneCount, fireCoords), sum([dc_val(drone, survivor[0]) for drone in survivor[1]]))
+    return(survivor, fitness(survivor, droneCount, fireCoords), overall_dc_val(survivor[1], survivor[0]))
 
 
 
 
-main(3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 10, 20, 3, -10, 10, 0, 40)
+# runGA(3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 10, 20, 3, -10, 10, 0, 40)
