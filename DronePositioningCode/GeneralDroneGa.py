@@ -16,7 +16,7 @@ RECHARGE_TIME = 1.75                        # Time it takes dronesto recharge
 DRONE_SPEED = 1.2 * 60                           # km/hr
 BATTERY_LIFE = 2.5                          # Hours before recharge required
 DRONE_SIGNAL_RANGE = 20                     # Drone signal range (km)
-
+e = 2.718281
 
 
 '''
@@ -44,6 +44,18 @@ def overall_dc_val(drones,eoc):
     return sum([dc_val(drone,eoc) for drone in drones])
 
 
+'''
+Gets best survivor from batch
+'''
+def best_survivor(gen, droneCount, fireCoords):
+    # Choose best survivor
+    fit = 0
+    best = None
+    for survivor in gen:
+        if fitness(survivor, droneCount, fireCoords) > fit:
+            fit = fitness(survivor, droneCount, fireCoords)
+            best = survivor
+    return(survivor, fitness(survivor, droneCount, fireCoords) - 1500, overall_dc_val(survivor[1], survivor[0]))
 
 
 
@@ -67,7 +79,7 @@ def fitness(proposal, droneCount, fireCoords):
             break
 
     # Punish if exceed drone count
-    layer1 = 100
+    layer1 = 500
     dc = 0
     for drone in proposal[1]:
         dc += dc_val(drone, eoc)
@@ -139,7 +151,7 @@ Make all gen0 proposals that will later be evolved over time - done
 '''
 def intialize_parents(droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound):
     # Assume there is a safe place to put EOC - fix later if necessary
-    return cull([intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound) for i in range(unculledBatchSize)], culledBatchSize, lambda kid: fitness(kid, droneCount, fireCoords))
+    return cull([intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound) for i in range(unculledBatchSize)], len(fireCoords), culledBatchSize, lambda kid: fitness(kid, droneCount, fireCoords), 0, 1)
 
 '''
 Make kid off of 1 proposal - done
@@ -203,21 +215,44 @@ def spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, 
 Given a set of kids, kill them off until only the fittest survive
 (call with lambda as fitnessFunc specifying arguments)
 '''
-def cull(kids, batchSize, fitnessFunc):
+def cull(kids, fireCount, batchSize, fitnessFunc, runNum, totalRuns):
+    # Direct Selection? -                                       best
     kids.sort(reverse = True, key = fitnessFunc)
     return kids[:batchSize]     # If the literature says to, make this a probabilistic approach
+    
+    # Roulette Wheel Selection -                                worst
+    # children = list(kids)
+    # return random.choices(children, weights = [(fitnessFunc(child) - 1500)**2 for child in children], k=batchSize)
 
+    # Rank Selection                                            second best, but still bad
+    # kids.sort(reverse = True, key = fitnessFunc)
+    # return random.choices(kids, weights = [len(kids) - i for i in range(len(kids))], k=batchSize)
+
+    # Direct Selection + random -                               bad, somehow
+    # kids.sort(reverse = True, key = fitnessFunc)
+    # a = kids[:batchSize - batchSize//10]
+    # b = [] + kids
+    # for k in a:
+    #     b.remove(k)
+    # b = random.choices(b, k = batchSize//10)
+    # return a + b
+
+    # Boltzmann Selection -                                     pretty bad, but not terrible - maybe robust on large run sizes?                               
+    # temp = 1 - 0.8 * runNum/float(totalRuns)   
+    # scale = 3
+    # adjustfit = lambda fit: scale * float(fitnessFunc(fit) - 1500)/fireCount
+    # return random.choices(kids, weights=[e**(adjustfit(kid)/temp) for kid in kids], k = batchSize)
 '''
 Given gen n, generate gen n+1
-Note that the parents can survive into the next generation if they are good. - massive improvement to performance
+Note that the parents can survive into the next generation if they are good. - massive improvement to performance 
 '''
-def kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound):
+def kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound, runNum, totalRuns):
     kids = [] + gen
     babiesPer = int(unculledBatchSize/1 + len(gen[1]))
     for parent in gen:
         for i in range(babiesPer):
             kids.append(spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, highYbound))
-    return cull(kids, culledBatchSize, lambda kid: fitness(kid, droneCount, fireCoords))
+    return cull(kids, len(fireCoords), culledBatchSize, lambda kid: fitness(kid, droneCount, fireCoords), runNum, totalRuns)
 
 
 
@@ -231,6 +266,8 @@ Inputs:
     highXbound - upper bound on drone x coordinate
     lowYbound - lower bound on drone y coordinate
     highYbound - upper bound on drone y coordinate
+
+
 '''
 def runGA(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     # Set initial generation
@@ -238,17 +275,25 @@ def runGA(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generation
 
     # Mutate, cull, and repeat
     for i in range(generations):
-        gen = kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound)
+        gen = kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound,i+1,generations)
 
-    # Choose best survivor
-    fit = 0
-    best = None
-    for survivor in gen:
-        if fitness(survivor, droneCount, fireCoords) > fit:
-            fit = fitness(survivor, droneCount, fireCoords)
-            best = survivor
-    return(survivor, fitness(survivor, droneCount, fireCoords), overall_dc_val(survivor[1], survivor[0]))
+    return(best_survivor(gen, droneCount, fireCoords))
 
+'''
+Runs the GA but gives data on the best of every generation
+'''
+def runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
+    bests = []
+    # Set initial generation
+    gen = intialize_parents(droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound)
+    bests.append(best_survivor(gen, droneCount, fireCoords))
+
+    # Mutate, cull, and repeat
+    for i in range(generations):
+        gen = kids_and_cull(gen, droneCount, fireCoords, culledBatchSize, unculledBatchSize, lowXbound, highXbound, lowYbound, highYbound,i+1,generations)
+        bests.append(best_survivor(gen, droneCount, fireCoords))
+
+    return(bests)
 
 
 
