@@ -6,7 +6,7 @@ import plotly.express as px
 from plotly.offline import plot
 
 # Read in data and view description
-df = pd.read_csv("../Data/wildfire data 2012-2021.csv")
+df = pd.read_csv("Data/wildfire data 2012-2021.csv")
 
 df.tail()
 # %% codecell

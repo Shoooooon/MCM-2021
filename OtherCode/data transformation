@@ -1,0 +1,31 @@
+from math import radians, cos, sin, asin, sqrt
+import pandas as pd
+import numpy as np
+import datetime as dt
+#Harvesine metric function
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    r = 6371 # Radius of earth in kilometers. Use 3956 for miles
+    return c * r
+
+
+# Read in data and view description
+df = pd.read_csv("Data\wildfire data 2020-2021 + cluster.csv")
+
+df.head()
+
+df_firecluster = df.groupby(['acq_date',"cluster"])[['latitude', 'longitude']].apply(lambda x: x.values.tolist())
+
+
+df_firecluster.head()
