@@ -8,7 +8,7 @@ The goal of this file is to provide the necessary results on Bohan's data.
 1) Read clusters and choose what to run
 2) Run each cluster, and write to output file
 '''
-EOC_FROM_FIRE = 25                                                               # Note that there are 2 such variables in this folder, so when you change one you should change the other
+EOC_FROM_FIRE = 20                                                               # Note that there are 2 such variables in this folder, so when you change one you should change the other
 BOHAN_CSV_FILENAME = '../Data/fire_data_for_drones.csv'
 # Bohan file preprocessing
 df = pandas.read_csv(BOHAN_CSV_FILENAME,  converters={'fires_cart': eval})
@@ -75,9 +75,9 @@ def main():
 
     # Set parameters for runs 
     n = 50
-    culledBatchSize = 15
-    unculledBatchSize = 75
-    generations = 100
+    culledBatchSize = 30
+    unculledBatchSize = 60
+    generations = 125
 
     row = int(sys.argv[1])
 
@@ -95,5 +95,5 @@ def choose_rows():
         if len(df.at[i,'fires_cart']) > 1:
             writeFile.write(str(i) + '\n')
     
-
-main()
+if __name__ == '__main__':
+    main()

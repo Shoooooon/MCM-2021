@@ -26,6 +26,7 @@ def list_to_dict(values):
     return d
 
 
+
 '''
 Runs problem with specified parameters specified number of times, outputing the following data
 Inputs:
@@ -48,6 +49,8 @@ def runTest(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, gener
 def fire_coverage_distribution(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     dist = [i[0] for i in runTest(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)]
     return list_to_dict(dist)
+
+
 
 
 
@@ -89,32 +92,32 @@ def distribution_by_runs(n, droneCount, fireCoords, culledBatchSize, unculledBat
 
 
 
+
+
 # print(fire_coverage_distribution(50, 1, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 15, 30, 3, -10, 10, 0, 40))
 # print(fire_coverage_distribution(50, 3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 15, 30, 4, -10, 10, 0, 40))
 # print(fire_coverage_distribution(50, 3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 15, 30, 5, -10, 10, 0, 40))
 # print(fire_coverage_distribution(50, 3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 15, 30, 6, -10, 10, 0, 40))
 
 
-testCase2 = [(-15,-15),(-15,15),(0,0),(15,-15),(15,15),]
-# print(fire_coverage_distribution(50, 3, testCase2, 10, 20, 3, -15, 15, -15, 15))
+# testCase2 = [(-30,32),(-30,30),(-30,28),(0,0),(30,32),(30,30),(30,28)]
+# print(distribution_by_runs(25, 14, testCase2, 10, 30, 8, -55, 55, -55, 55))
 
 
-testCase3 = [(29,-10),(-30,52),(10,0),(56,-2),(32,8),(18,41),(0,25),(40,15)]
-# print(fire_coverage_distribution(50, 4, testCase3, 10, 30, 3, -60, 60, -60, 60))
+# testCase3 = [(-27,0),(-25,3),(0,27),(25,3),(27,0)]
+# print(distribution_by_runs(50, 6, testCase3, 10, 30, 8, -60, 60, -60, 60))
 # print(fire_coverage_distribution(50, 4, testCase3, 10, 30, 6, -60, 60, -60, 60))
 
-# [print(i) for i in distribution_by_runs(50, 4, testCase3, 10, 30, 10, -60, 60, -60, 60)]
+# [print(i) for i in distribution_by_runs(50, 10, testCase3, 10, 30, 8, -60, 60, -60, 60)]
 
-testCase4 = [(np.random.uniform(-100.0,100.0),np.random.uniform(-100.0,100.0)) for i in range(20)]
-# a = distribution_by_runs(50, 10, testCase4, 10, 30, 7, -100, 100, -100, 100)
+# testCase4 = [(np.random.uniform(-50.0,50.0),np.random.uniform(-50.0,50.0)) for i in range(20)]
+# a = distribution_by_runs(50, 20, testCase4, 10, 30, 5, -70, 70, -70, 70)
 # [print(i) for i in a]
+
+# b = distribution_by_runs(50, 20, testCase4, 30, 60, 5, -70, 70, -70, 70)
+# [print(i) for i in b]
 
 # [print(sum([cover*frequency/float(50) for (cover,frequency) in i.items()])) for i in a]
 
 # cProfile.run('distribution_by_runs(50, 10, testCase4, 10, 30, 2, -100, 100, -100, 100)')
 
-
-'''
-Some ideas:
-. Allow larger km jumps in parents?
-'''

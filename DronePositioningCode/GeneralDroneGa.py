@@ -13,7 +13,7 @@ Restrictions/Requirements:
 # Drone signal range - drone2drone = 20, drone2fire = 5 --- adjust globals and fitness accordingly
 
 
-EOC_FROM_FIRE = 25                          # Minimum distance EOC needs to be from an active fire point - Note that there are 2 such variables in this folder, so when you change one you should change both
+EOC_FROM_FIRE = 20                          # Minimum distance EOC needs to be from an active fire point - Note that there are 2 such variables in this folder, so when you change one you should change both
 RECHARGE_TIME = 1.75                        # Time it takes dronesto recharge
 DRONE_SPEED = 1.2 * 60                      # km/hr
 BATTERY_LIFE = 2.5                          # Hours before recharge required
@@ -46,7 +46,8 @@ def dc_val(drone, eoc):
 Returns overall drone hours per hour of a proposal.
 '''
 def overall_dc_val(drones,eoc):
-    return sum([dc_val(drone,eoc) for drone in drones])
+    # return sum([dc_val(drone,eoc) for drone in drones])
+    return(2*len(drones))
 
 
 '''
@@ -143,7 +144,7 @@ def intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, h
     while dc < droneCount:                                      # Unnecessary condition here, but feels nice
         base = random.choice(tuple(network))                    # Choose node to be in range of, and set point in range of choice
         theta = np.random.uniform(0.0, 2*np.pi)
-        r = np.random.uniform(0.8, 1)                           # Forces drones sort of kind of apart in first approximation since tightly clustered drones are useless
+        r = np.random.uniform(0.5, 1)                           # Forces drones sort of kind of apart in first approximation since tightly clustered drones are useless
         xNew = r*DRONE2DRONE_SIGNAL_RANGE*np.cos(theta) + base[0]
         xNew = min(max(xNew, lowXbound), highXbound) 
         yNew = r*DRONE2DRONE_SIGNAL_RANGE*np.sin(theta) + base[1]
@@ -177,7 +178,7 @@ def spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, 
     kid = [parent[0],set()]
     
     # Try to move EOC randomly, only allow if safe distance from fire
-    displacement = (np.random.uniform(-6.0, 6.0), np.random.uniform(-6.0, 6.0))
+    displacement = (np.random.uniform(-7.5, 7.5), np.random.uniform(-7.5, 7.5))
     newEOC = np.add(parent[0],displacement)
     newEOC = (min(max(newEOC[0], lowXbound), highXbound), min(max(newEOC[1], lowYbound), highYbound))
     safeEOC = True
@@ -187,12 +188,12 @@ def spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, 
     if safeEOC:
         kid[0] = newEOC
 
-    # Move the drones randomly
+    # Move the drones randomly, by random degrees of extremeness.
     for drone in parent[1]:
         # Small chance of killing and replacing drone (2%) - In case high number of drones and we get a poorly seeded drone in an otherwise good candidate
         # On larger fire areas, I'm hoping this will be a useful Mulligan
         if np.random.uniform(0,100) < 98:
-            displacement = (np.random.uniform(-10.0,10.0), np.random.uniform(-10.0,10.0))               # This makes a very big deal - it is good to be large
+            displacement = (np.random.uniform(-10.0, 10.0), np.random.uniform(-10.0, 10.0))               # This makes a very big deal - it is good to be large
             newDrone = np.add(drone,displacement)
             newDrone = (min(max(newDrone[0], lowXbound), highXbound), min(max(newDrone[1], lowYbound), highYbound))
             kid[1].add(newDrone)
