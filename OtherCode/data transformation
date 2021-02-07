@@ -13,6 +13,11 @@ def transform(Coords_of_points, Center_of_coordinates):
         x,y,z = pm.geodetic2enu(point[0], point[1], 0, Center_of_coordinates[0], Center_of_coordinates[1], 0)
         res.append((x/1000,y/1000))
     return res
+
+def transform2(x_lat,x_long, center_lat, center_long):
+    x,y,z = pm.geodetic2enu(x_lat,x_long, 0,  center_lat, center_long, 0)
+    return x/1000,y/1000
+
 # Read in data and view description
 #2020 - 2021 data
 df = pd.read_csv("Data\wildfire data 2020-2021 + cluster.csv")
@@ -28,8 +33,9 @@ df_firecluster["centroid.cart"] = df_firecluster.apply(lambda x:(0,0), axis=1)
 
 df_firecluster.head()
 
-#df_firecluster.to_csv('fire_data_for_drones.csv',
-        sep=',',index=True)
+#df_firecluster.to_csv('fire_data_for_drones.csv',sep=',',index=True)
+
+
 #2012 - 2021 data
 df2012 = pd.read_csv("Data\wildfire data 2012-2021 + cluster.csv")
 
@@ -37,8 +43,9 @@ df2012.describe()
 df2012['centroid_geodetic'] = list(zip(df2012.cluster_centroid_lat, df2012.cluster_centroid_long))
 
 
-df_firecluster2012 = pd.DataFrame(df2012.groupby(['acq_date',"cluster",'centroid_geodetic'], group_keys=False)[['latitude', 'longitude']].apply(lambda x: x.to_records(index=False).tolist()).reset_index(name='fires_geodetic'))
+df_firecluster2012 = df2012[['cluster_centroid_lat','cluster_centroid_long','latitude', 'longitude']].apply(lambda x: transform2(x[2],x[3],x[0],x[1]),axis = 1)
 
+hea
 df_firecluster2012["fires_cart"] = df_firecluster2012.apply(lambda x:transform(x.fires_geodetic,x.centroid_geodetic), axis=1)
 df_firecluster2012["centroid.cart"] = df_firecluster.apply(lambda x:(0,0), axis=1)
 
@@ -52,7 +59,14 @@ df_fire_coords = pd.DataFrame(flat_list_fire_coords)
 
 df_fire_coords.columns = ["fire_cart_x","fire_cart_y"]
 
-frames = [df2012, df_fire_coords]
+frames = [df2012, df_firecluster2012]
 
-df2012_2021 = pd.concat(frames)
-df2012_2021.describe()
+df2012_2021 = pd.concat(frames, axis=1)
+df2012_2021 = df2012_2021.drop(['centroid_geodetic'],axis = 1)
+
+df2012_2021.columns = ["latitude",'longitude',"acq_date",	'cluster','cluster_centroid_lat','cluster_centroid_long','fire_coord']
+
+df2012_2021[["fire_cart_x","fire_cart_y"]] = pd.DataFrame(df2012_2021['fire_coord'].tolist(), index=df2012_2021.index)
+
+df2012_2021 = df2012_2021.drop(['fire_coord'],axis = 1)
+df2012_2021.to_csv('wildfire data 2012-2021 + cluster.csv',sep=',',index=True)
