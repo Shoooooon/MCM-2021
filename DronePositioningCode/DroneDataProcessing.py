@@ -34,7 +34,6 @@ def find_bounding_box(fireCoords):
 Given a cluster, a number of drones to try, and the other necessary data, writes out the distribution data to 'filename_prefix_drone_distrubitions.txt'
 '''
 def run_cluster_with_dc(filename_prefix, n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
-    print(droneCount)
     results = dv.distribution_by_runs(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)
     writeFile = open(filename_prefix + '_drone_distribution.txt','a')
     for result in results:
