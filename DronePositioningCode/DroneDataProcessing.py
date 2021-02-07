@@ -8,7 +8,7 @@ The goal of this file is to provide the necessary results on Bohan's data.
 1) Read clusters and choose what to run
 2) Run each cluster, and write to output file
 '''
-EOC_FROM_FIRE = 25                                                               # Note that there are 2 such variables in this folder, so when you change one you should change the other
+EOC_FROM_FIRE = 20                                                               # Note that there are 2 such variables in this folder, so when you change one you should change the other
 BOHAN_CSV_FILENAME = '../Data/fire_data_for_drones.csv'
 # Bohan file preprocessing
 df = pandas.read_csv(BOHAN_CSV_FILENAME,  converters={'fires_cart': eval})
@@ -34,6 +34,7 @@ def find_bounding_box(fireCoords):
 Given a cluster, a number of drones to try, and the other necessary data, writes out the distribution data to 'filename_prefix_drone_distrubitions.txt'
 '''
 def run_cluster_with_dc(filename_prefix, n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
+    print(droneCount)
     results = dv.distribution_by_runs(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)
     writeFile = open(filename_prefix + '_drone_distribution.txt','a')
     for result in results:
@@ -75,9 +76,9 @@ def main():
 
     # Set parameters for runs 
     n = 50
-    culledBatchSize = 15
-    unculledBatchSize = 75
-    generations = 100
+    culledBatchSize = 30
+    unculledBatchSize = 60
+    generations = 125
 
     row = int(sys.argv[1])
 
@@ -95,5 +96,5 @@ def choose_rows():
         if len(df.at[i,'fires_cart']) > 1:
             writeFile.write(str(i) + '\n')
     
-
-main()
+if __name__ == '__main__':
+    main()
