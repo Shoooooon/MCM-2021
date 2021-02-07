@@ -50,20 +50,29 @@ def fire_coverage_distribution(n, droneCount, fireCoords, culledBatchSize, uncul
     return list_to_dict(dist)
 
 
+
+# def lambda_for_parallel():
+#     [[x[1:] for x in gg.runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)] for p in range(nList(k),nList(k+1))]
+
 '''
 Returns list of runs
 Each run is a list of (best values, droneCount) tuples
 '''
 def runTest_all_gen_output(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
-    tasks = [None] * n
-    executor = concurrent.futures.ThreadPoolExecutor()
-    # Parallelize, but only make like 10 threads bc the 100 thread overhead killed it
-    for i in range(n):
-        tasks[i] = [x[1:] for x in gg.runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)]
-    g = [task for task in tasks]
-    if None in g:
+    tasks = [None] * 10
+    output = []
+    # # nList = [0, int(n/10), 2*int(n/10), 3*int(n/10), 4*int(n/10), 5*int(n/10), 6*int(n/10), 7*int(n/10), 8*int(n/10), 9*int(n/10), n]
+    # executor = concurrent.futures.ThreadPoolExecutor()
+    # # Parallelize, but only make like 10 threads bc the 100 thread overhead killed it
+    # for k in range(10):
+    #     tasks[k] = executor.submit(lambda : [[x[1:] for x in gg.runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)] for p in range(nList[k],nList[k+1])])
+    # for i in range(10):
+    #     for out in tasks[i].result():
+    #         output.append(out)
+    output = [[x[1:] for x in gg.runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound)] for p in range(n)]
+    if None in output:
         return None
-    return g
+    return output
 
 
 def distribution_by_runs(n, droneCount, fireCoords, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
@@ -97,12 +106,12 @@ testCase3 = [(29,-10),(-30,52),(10,0),(56,-2),(32,8),(18,41),(0,25),(40,15)]
 # [print(i) for i in distribution_by_runs(50, 4, testCase3, 10, 30, 10, -60, 60, -60, 60)]
 
 testCase4 = [(np.random.uniform(-100.0,100.0),np.random.uniform(-100.0,100.0)) for i in range(20)]
-# a = distribution_by_runs(50, 10, testCase4, 10, 30, 2, -100, 100, -100, 100)
+# a = distribution_by_runs(50, 10, testCase4, 10, 30, 7, -100, 100, -100, 100)
 # [print(i) for i in a]
 
 # [print(sum([cover*frequency/float(50) for (cover,frequency) in i.items()])) for i in a]
 
-cProfile.run('distribution_by_runs(50, 10, testCase4, 10, 30, 2, -100, 100, -100, 100)')
+# cProfile.run('distribution_by_runs(50, 10, testCase4, 10, 30, 2, -100, 100, -100, 100)')
 
 
 '''

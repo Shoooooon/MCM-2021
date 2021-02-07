@@ -9,13 +9,16 @@ Restrictions/Requirements:
 . 
 '''
 
+### Changes:
+# Drone signal range - drone2drone = 20, drone2fire = 5 --- adjust globals and fitness accordingly
 
 
-EOC_FROM_FIRE = 1                           # Minimum distance EOC needs to be from an active fire point
+EOC_FROM_FIRE = 25                          # Minimum distance EOC needs to be from an active fire point - Note that there are 2 such variables in this folder, so when you change one you should change both
 RECHARGE_TIME = 1.75                        # Time it takes dronesto recharge
 DRONE_SPEED = 1.2 * 60                      # km/hr
 BATTERY_LIFE = 2.5                          # Hours before recharge required
-DRONE_SIGNAL_RANGE = 20                     # Drone signal range (km)
+DRONE2DRONE_SIGNAL_RANGE = 20               # Drone signal range to other drones (km)
+DRONE2MAN_SIGNAL_RANGE = 5                  # Drone signal range to people and SSA drones (km)
 e = 2.718281
 
 
@@ -31,11 +34,13 @@ def euclidean_dist(a,b):
 
 '''
 Computes "drone hours per hour" of potential drone position
+We decided that the drones should be stationed permanently, at least in the extreme short-term, so we have 2 drones per position
 '''
 def dc_val(drone, eoc):
     # flightTime = euclidean_dist(eoc,drone)/DRONE_SPEED
-    flightTime = 0                                                          # Assuming firefighters set manually and are there to replace/recharge
-    return (BATTERY_LIFE + RECHARGE_TIME)/(BATTERY_LIFE - 2*flightTime)
+    # flightTime = 0                                                          # Assuming firefighters set manually and are there to replace/recharge
+    # return (BATTERY_LIFE + RECHARGE_TIME)/(BATTERY_LIFE - 2*flightTime)
+    return 2
 
 '''
 Returns overall drone hours per hour of a proposal.
@@ -66,25 +71,27 @@ Major functions
 '''
 
 '''
-Shitty fitness function for drone placement
+Direct fitness function for drone placement
 Reevaluate later based on literature for smoother measures and better counting
+It turns out we can't do better, so we'll stick with this.
+Over enough time, we get convergence to good values anyway.
 '''
 def fitness(proposal, droneCount, fireCoords):
     eoc = proposal[0]
-    # Punish if EOC in fire                 -  Not necessary based on how kids are being made
+    # Punish if EOC in fire                             -  No longer necessary based on how kids are being made
     layer0 = 1000
-    for fire in fireCoords:
-        if euclidean_dist(fire, eoc) < EOC_FROM_FIRE:
-            layer0 = 0
-            break
+    # for fire in fireCoords:
+    #     if euclidean_dist(fire, eoc) < EOC_FROM_FIRE:
+    #         layer0 = 0
+    #         break
 
-    # Punish if exceed drone count
+    # Punish if exceed drone count                      - No longer necessary since dc now fixed
     layer1 = 500
-    dc = 0
-    for drone in proposal[1]:
-        dc += dc_val(drone, eoc)
-    if dc > droneCount:                     # May want to make this a continuous/smooth function later haha analysis is useful
-        layer1 = 0
+    # dc = 0
+    # for drone in proposal[1]:
+    #     dc += dc_val(drone, eoc)
+    # if dc > droneCount:                     # May want to make this a continuous/smooth function later haha analysis is useful
+    #     layer1 = 0
 
     # Reward by fire coverage
     layer2 = 0
@@ -96,14 +103,15 @@ def fitness(proposal, droneCount, fireCoords):
         for drone in (proposal[1] - inrange):
             adders = set()
             for node in inrange:
-                if euclidean_dist(node, drone) <= DRONE_SIGNAL_RANGE:
+                if euclidean_dist(node, drone) <= DRONE2DRONE_SIGNAL_RANGE:
                     adders.add(drone)
                     changed = True
+                    break
             inrange = inrange | adders                  # Union
     # Count fires in range of EOC
     for fire in fireCoords:
         for drone in inrange:
-            if euclidean_dist(fire, drone) < DRONE_SIGNAL_RANGE:
+            if euclidean_dist(fire, drone) < DRONE2MAN_SIGNAL_RANGE:
                 layer2 += 1                 # Could weight this by brightness or other fire-importance metric
                 break
 
@@ -119,7 +127,7 @@ def intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, h
     while not EOCSafe and trials >=0:
         EOCSafe = True
         trials -= 1
-        eoc = (np.random.uniform(lowXbound,highXbound),np.random.uniform(lowXbound,highXbound))
+        eoc = (np.random.uniform(lowXbound,highXbound),np.random.uniform(lowYbound,highYbound))
         for fire in fireCoords:
             if euclidean_dist(fire, eoc) < EOC_FROM_FIRE:
                 EOCSafe = False
@@ -135,10 +143,10 @@ def intialize_parent(droneCount, fireCoords, lowXbound, highXbound, lowYbound, h
     while dc < droneCount:                                      # Unnecessary condition here, but feels nice
         base = random.choice(tuple(network))                    # Choose node to be in range of, and set point in range of choice
         theta = np.random.uniform(0.0, 2*np.pi)
-        r = np.random.uniform(0.9, 1)                           # Forces drones sort of kind of apart in first approximation since tightly clustered drones are useless
-        xNew = r*DRONE_SIGNAL_RANGE*np.cos(theta) + base[0]
+        r = np.random.uniform(0.8, 1)                           # Forces drones sort of kind of apart in first approximation since tightly clustered drones are useless
+        xNew = r*DRONE2DRONE_SIGNAL_RANGE*np.cos(theta) + base[0]
         xNew = min(max(xNew, lowXbound), highXbound) 
-        yNew = r*DRONE_SIGNAL_RANGE*np.sin(theta) + base[1]
+        yNew = r*DRONE2DRONE_SIGNAL_RANGE*np.sin(theta) + base[1]
         yNew = min(max(yNew, lowYbound), highYbound) 
         drone = (xNew, yNew)                                    # If we can afford the drone, add it. Else, don't. Now, this is basically just counting drones.
         if dc_val(drone, eoc) > 0:
@@ -196,9 +204,9 @@ def spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, 
                 base = random.choice(tuple(parent[1]))                    # Choose node to be in range of, and set point in range of choice
                 theta = np.random.uniform(0.0, 2*np.pi)
                 r = np.random.uniform(0.9, 1)                           # Forces drones sort of kind of apart in first approximation since tightly clustered drones are useless
-                xNew = r*DRONE_SIGNAL_RANGE*np.cos(theta) + base[0]
+                xNew = r*DRONE2DRONE_SIGNAL_RANGE*np.cos(theta) + base[0]
                 xNew = min(max(xNew, lowXbound), highXbound) 
-                yNew = r*DRONE_SIGNAL_RANGE*np.sin(theta) + base[1]
+                yNew = r*DRONE2DRONE_SIGNAL_RANGE*np.sin(theta) + base[1]
                 yNew = min(max(yNew, lowYbound), highYbound) 
                 newDrone = (xNew, yNew)                                    # If we can afford the drone, add it. Else, don't. Now, this is basically just counting drones.
                 if fitness([parent[0],copy.union({newDrone})], droneCount, fireCoords) > bestScore:
@@ -210,9 +218,9 @@ def spawn_kid(parent, droneCount, fireCoords, lowXbound, highXbound, lowYbound, 
     # # Small chance of spawning drone (1%)
     # if np.random.uniform(0,100) > 99:
     #     node = random.choice(tuple([parent[0]] + list(parent[1])))                    # Choose node to be in range of, and set point in range of choice
-    #     xNew = np.random.uniform(-DRONE_SIGNAL_RANGE,DRONE_SIGNAL_RANGE)
+    #     xNew = np.random.uniform(-DRONE2DRONE_SIGNAL_RANGE,DRONE2DRONE_SIGNAL_RANGE)
     #     xNew = min(max(xNew, lowXbound), highXbound) 
-    #     ySpread = np.sqrt(DRONE_SIGNAL_RANGE**2 - xNew**2)
+    #     ySpread = np.sqrt(DRONE2DRONE_SIGNAL_RANGE**2 - xNew**2)
     #     yNew = np.random.uniform(-ySpread, ySpread)
     #     yNew = min(max(yNew, lowYbound), highYbound) 
     #     kid[1].add((xNew, yNew))
