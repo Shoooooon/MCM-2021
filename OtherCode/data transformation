@@ -5,33 +5,6 @@ import datetime as dt
 import math
 import pymap3d as pm
 
-# The local coordinate origin (Zermatt, Switzerland)
-lat0 = 46.017 # deg
-lon0 = 7.750  # deg
-h0 = 1673     # meters
-
-# The point of interest
-lat = 45.976  # deg
-lon = 7.658   # deg
-h = 4531      # meters
-
-pm.geodetic2enu(lat, lon, h, lat0, lon0, h0)#Harvesine metric function
-def haversine(lon1, lat1, lon2, lat2):
-    """
-    Calculate the great circle distance between two points
-    on the earth (specified in decimal degrees)
-    """
-    # convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-    # haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a))
-    r = 6371 # Radius of earth in kilometers. Use 3956 for miles
-    return c * r
-
 def transform(Coords_of_points, Center_of_coordinates):
     #input: Coords_of_points - list of coordinates in geodetic coordniates, Center_of_coordinates
     #output:Coords_of_points in local east-north-up coordniates, unit km
@@ -42,8 +15,6 @@ def transform(Coords_of_points, Center_of_coordinates):
     return res
 # Read in data and view description
 df = pd.read_csv("Data\wildfire data 2020-2021 + cluster.csv")
-
-df.head()
 
 df['centroid_geodetic'] = list(zip(df.cluster_centroid_lat, df.cluster_centroid_long))
 df.drop(['cluster_centroid_lat', 'cluster_centroid_long'],axis = 1)
