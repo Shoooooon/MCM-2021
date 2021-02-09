@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import random
 import math
 import numpy as np
-import pandas as pd
+
 
 Point = namedtuple('Point', 'x y')
 
@@ -136,8 +136,10 @@ class Cluster(object):
         hx = [p.x for p in self._hull_points]
         hy = [p.y for p in self._hull_points]
         plt.plot(hx, hy)
+        plt.xlabel("x/km")
+        plt.ylabel("y/km")
 
-        plt.title('The boundary of a cluster of fires')
+        plt.title('The boundary of a cluster of fires from gift wrapping algorithm (orange line)')
         plt.show()
         
         
@@ -263,14 +265,37 @@ def find_rho(p):
         rho = 0.5*rho
     else:
         rho = 1*rho
-    #if iftemparature:
-        #consider temperature factor
-    #if ifhumidity:
-        #consider humidity factor
-    
-    
     return rho
 
+def find_rho2(p):
+    """
+    find the drone density needed at a point
+    #grad: a tuple representing the gradient at the point
+    vec: the unit vector pointing outward the cluster
+    #vege: the vegetation array (true/false). we want to check the vegetation in the square with 
+    side length centered at
+    the point 
+    """
+    vec = p[2]
+    rho = None
+    #grad_field = grad(Topography)
+    gradp = find_grad(p, grad_field)
+    #print(gradp)
+    rho = np.tanh(5*dot_product(gradp,vec))+1
+    #print("This is crit", crit)
+    #first check by altitude gradient(the topography)
+    px = p[0]/Array_step
+    py = p[1]/Array_step
+    ceilx = int(np.ceil(px))
+    ceily = int(np.ceil(py))
+    idx = int(Fuel_check/2/Array_step)
+    idx2 = 4*idx**2
+    temp_array = Vegetation[ceilx-idx:ceilx+idx, ceily-idx:ceily+idx]
+    temp = np.sum(temp_array)
+    #print(temp)
+    #second check by fuel(vegetation)
+    rho = temp/idx2 * rho
+    return rho
 
 
 def assign_SSA(lst):
@@ -298,7 +323,29 @@ def assign_SSA(lst):
     return num
 
 
-        
+def assign_SSA2(lst):
+    """
+    the input will be a list of drone densities at equispaced points along the fire edge. 
+    returns the total number of SSA drones needed
+    """
+    check = R/Array_step
+    num = 0 #number of SSA drones needed
+    keep = 0
+    check_keep = 0
+    for i in lst:
+        if check_keep == check:
+            if keep > 0.8 * 2 * check:
+                num += 2
+            elif 0.2 * 2 * check < keep <= 0.8 * 2 * check:
+                num += 1
+            else:
+                num += 0
+            keep = 0
+            check_keep = 0
+        else:
+            keep += i
+            check_keep += 1
+    return num
         
     
 
@@ -308,9 +355,9 @@ def assign_SSA(lst):
 
 
 
-BOHAN_CSV_FILENAME = './Data/fire_data_for_drones.csv'
-df = pd.read_csv(BOHAN_CSV_FILENAME,  converters={'fires_cart': eval})
-number_of_clusters = df.shape[0]
+#BOHAN_CSV_FILENAME = './Data/fire_data_for_drones.csv'
+#df = pd.read_csv(BOHAN_CSV_FILENAME,  converters={'fires_cart': eval})
+#number_of_clusters = df.shape[0]
 
 def read_cluster(row):
     '''
@@ -331,21 +378,44 @@ N = 1
 if_temparature = False
 if_humidity = False
 
-print(grad(Topography))
+#print(grad(Topography))
 
-mycluster = read_cluster(1)
-
+#mycluster = read_cluster(1)
+#print(mycluster, 'this is cluster')
 ch = Cluster()
-for (i,j) in mycluster:
-    ch.add(Point(i,j))
-'''
-for _ in range(36000):
-    ch.add(Point(300*random.uniform(0.25,0.75), 300*random.uniform(0.25,0.75))) # set cluster
-for _ in range(2000):
-    ch.add(Point(300*random.uniform(0.4,0.75), 300*random.uniform(0.5,0.75)))
+#for (i,j) in mycluster:
+    #ch.add(Point(i,j))
+
+for _ in range(20000):
+    ch.add(Point(500*random.uniform(0.25,0.5), 500*random.uniform(0.25,0.4))) # set cluster
+"""
+for _ in range(10000):
+    ch.add(Point(500*random.uniform(0.4,0.75), 500*random.uniform(0.5,0.75)))
+
 for _ in range(15000):
-    ch.add(Point(300*random.uniform(0.3,0.65), 300*random.uniform(0.2,0.7)))
-'''
+    ch.add(Point(400*random.uniform(0.3,0.65), 400*random.uniform(0.2,0.7)))
+for _ in range(10000):
+    ch.add(Point(500*random.uniform(0.4,0.3), 500*random.uniform(0.3,0.7)))
+"""
+for _ in range(10000):
+    ch.add(Point(400*random.uniform(0.2,0.4), 500*random.uniform(0.3,0.55)))
+
+
+my_lst = [(-26.907016076747677, -33.898694783273385), (-22.508703595430795, -28.332413068723785), (-28.055234256851893, -35.353452077360345), (-27.80696980844345, -35.03885130613091), (-23.233814780790958, -29.249396417184602), (-25.98466835684022, -32.73059801280237), (-25.79090504835786, -32.4852640674714), (-25.680617355702683, 
+-32.34563158736822), (-25.192758011394194, -31.72803979977314), (-22.590598949271172, -28.435965367299627), (-22.76273960153767, -28.653639178980082), (-13.321188604650128, -16.736941560881416), (-13.376674499776225, -16.80684138056677), (-13.07647492668314, -16.42867559967247), (-12.96513916978934, -16.28843588980152), (-13.02063107624823, -16.35833330632231), (-12.420845376485154, -15.602927665149924), (-20.006163599367646, -25.16973324104269), (-13.541538825155902, -17.014542736164774), (-20.133369760062106, -25.33041791661425), (-19.82375275092328, -24.939329301377764), (-12.596875028296207, -15.8246110146866), (-12.651402603119445, -15.893283614008483), (-2.9059668717364513, -3.6435239860869584), (-12.291574495200038, -15.440140037242475), (-10.375034633678752, -13.0276769943689), (-9.958090573227368, -12.503089644741292), (-10.013633179016704, -12.572966746373996), (-9.707386634215744, -12.18770307537135), (-8.408525459401643, -10.554236464007527), (-8.46312236101287, -10.622881248085864), (3.085902676781361, 3.8645277895156553), (-8.102836822126696, -10.169921239758818), (0.6857373586711298, 0.8591694476983129), (0.9874799624619864, 1.2371526599726625), (-2.4745402717647242, -3.102331749969159), (-1.451725096389027, -1.8196580746215465), (6.704998914267904, 8.390765439667566), (7.005331619409322, 8.766086613292234), (6.949771596011853, 8.696657463684316), (-2.927912821070861, -3.6710560131841503), (-3.0389677222004177, -3.8103822928015827), (-3.0953344079449256, -3.8811006690600864), (-3.982651871578633, -4.994549830849922), (-2.6780921033008167, -3.3576606433939786), (-3.676554565983515, -4.610399579466219), (5.319591602869544, 6.658865973255981), (-3.4251090302274982, -4.294871993751356), (-3.4797881093340344, -4.363483599647079), (-2.643666168868026, -3.314476401617965), (-2.7003935467047016, -3.385636116233206), (7.597200477252118, 9.505605638735947), (7.542340825383889, 9.437067733559767), (7.898589440905842, 9.882113943585138), (8.254875775565548, 10.327144636410337), (-5.431011649414054, -6.812867888504825), (-5.0296274403666, -6.308851945906236), (16.171407998633924, 20.199429765777253), (16.114718108887672, 20.12884410504486), (8.490615472724379, 10.621568322696636), (8.433343858924518, 10.55004228929958), (15.279341707626424, 19.08851874286873), (9.216584284607483, 11.52808444993854), (9.579760586842609, 11.981484663010253), (9.520516391508366, 11.907526864047254), (9.82376526974092, 12.286070953490041), (9.883014793564964, 12.360026555038152), (9.652951255186329, 12.072850226720067), (18.492589418662362, 23.08822822324007), (11.795103131302659, 14.745778943431539), (11.743908077120084, 14.681925233803607), (18.90271988531297, 23.59837771681344), (19.15033612487589, 23.906340720627945), (19.09635781358843, 23.83920985747048), (26.932217342096894, 33.56955940299305), (24.413398492419795, 30.445010891644458), (26.538262267549808, 33.08106795875339), (27.254788849449277, 33.969481671662976), (27.197200518137805, 33.898087683753154), (26.97685593429909, 33.62490506764266), (27.556585333108817, 34.34360164682272), (27.499349112743435, 34.272652534654746), (28.217772894146847, 35.163084534661195), (28.518939318519443, 35.53628341748954), (28.582355535494404, 35.614861833550364)]
+
+
+"""
+for (i,j) in my_lst:
+    ch.add(Point(i+100,j+100))
+"""
+
+"""
+for _ in range(60):
+    ch.add(Point(500*random.uniform(0.25,0.4), 500*random.uniform(0.25,0.35))) # set cluster
+"""
+
+
     
 print("Points on hull:", ch.get_hull_points())
 print(ch.get_edges())
@@ -375,17 +445,24 @@ grad_field = grad(Topography)
 
 rho_lst = []
 for i in point_lst:
-    rho_lst.append(find_rho(i))
+    rho_lst.append(find_rho2(i))
     
     
-
+length_rho_lst = len(rho_lst)
+result_lst = []
+for idx in range(length_rho_lst):
+    new_lst = rho_lst[idx:]+rho_lst[0:idx]
+    result_lst.append(assign_SSA2(new_lst))
+result = min(result_lst)
+print(result)
+"""
 result = assign_SSA(rho_lst)
 print("Need SSA drones ", result)
 #print(Vegetation)
-#print(rho_lst)
+print(rho_lst)
 #print(len(rho_lst))
     
-
+"""
 
 
 
