@@ -1,4 +1,4 @@
-#Data-Driven Drone Deployment Models for WildfireManagement
+# Data-Driven Drone Deployment Models for WildfireManagement
 MCM Spring 2021 Repo
 Bohan Wu, Kevin Zheng, Shaan Nagy
 
