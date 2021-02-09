@@ -50,14 +50,27 @@ Returns true if eoc is not within range of any fire - false otherwise
 '''
 def check_eoc_safety(eoc, pointSupp):
     fireCoords = pointSupp.get_contained_points()
-    for fireFree in pointSupp.get_range(eoc, EOC_FROM_FIRE):
-        if fireFree in fireCoords:
-            return False
+    if pointSupp.get_range(eoc, EOC_FROM_FIRE).intersection(set(fireCoords)) != set():
+        return False
     return True
 
 
-
-
+'''
+Finds subset of drones that are in range of the EOC
+'''
+def get_drones_in_range(proposal, pointSupp):
+    # Get drones in range of EOC via BFS
+    eoc = proposal[0]
+    inrange = {eoc}
+    unseen = set(proposal[1] - {eoc})
+    unchecked = {eoc}
+    while unchecked != set():
+        baseNode = unchecked.pop()
+        for lookNode in pointSupp.get_range(baseNode, DRONE2DRONE_SIGNAL_RANGE).intersection(unseen):            # For each possible drone in range, add it to the set if it's a new drone
+            unseen.remove(lookNode)
+            unchecked.add(lookNode)
+            inrange.add(lookNode)
+    return inrange
 '''
 Major functions
 '''
@@ -74,34 +87,20 @@ Inputs:
     Proposal - ((eoc.x, eoc.y), {(drone1.x,drone1.y)...(dronen.x,dronen.y)})
     pointSupp - PointMaster object containing fire'''
 def fitness(proposal, pointSupp):
-    eoc = proposal[0]
     fireCoordsWeighted = pointSupp.get_contained_weighted_points()
     
-    # Reward by fire coverage
-    fitScore = 0
-    # Get drones in range of EOC
-    inrange = {eoc}
-    changed = True
-    while changed:
-        changed = False
-        adders = set()
-        for drone in (proposal[1] - inrange):
-            for node in pointSupp.get_range(drone, DRONE2DRONE_SIGNAL_RANGE):
-                if node in inrange:
-                    adders.add(drone)
-                    changed = True
-                    break
-        inrange = inrange | adders                      # Union
-    # Count fires in range of EOC
+    inrange = get_drones_in_range(proposal, pointSupp)
 
-    # Get full range network can hit drone2man
+    # Count fires in range of EOC
+    # Get full range the network can hit drone2man
     fireRange = set()                                           
     for drone in inrange:
         fireRange |= pointSupp.get_range(drone, DRONE2MAN_SIGNAL_RANGE)    
-    # Count fires covered
-    fitScore = sum([fire[2] for fire in list(filter(lambda fire: fire[:2] in fireRange, fireCoordsWeighted))])         # Could weight this by brightness or other fire-importance metric
-    return fitScore
-
+    # Count fires covered and return
+    # print(fireRange)
+    # print(proposal, list(filter(lambda fire: fire[:2] in fireRange, fireCoordsWeighted)))
+    return sum([fire[2] for fire in list(filter(lambda fire: fire[:2] in fireRange, fireCoordsWeighted))])         # Could weight this by brightness or other fire-importance metric
+    
 '''
 Make one gen0 proposal
 '''
@@ -169,23 +168,40 @@ def spawn_kid(parent, pointSupp):
     if check_eoc_safety(newEOC, pointSupp):
         kid[0] = newEOC
 
-    # Move the drones randomly, by random degrees of extremeness.
+    # Move the drones randomly, at most to an adjacent square.
     droneLog = set(parent[1])
     for drone in parent[1]:
-        # Small chance of killing and replacing drone (5%) - In case high number of drones and we get a poorly seeded drone in an otherwise good candidate
+        # Small chance of killing and replacing drone (0%) - In case high number of drones and we get a poorly seeded drone in an otherwise good candidate
         # On larger fire areas, I'm hoping this will be a useful Mulligan
+        # Update - I removed this because it was taking a stupidly long time to run
         droneLog.remove(drone)
-        if np.random.uniform(0,100) < 95:
-            loc = random.choice(list(pointSupp.get_range(drone, SQRT2 * BOX_SIZE) - droneLog))                     # Adjacent unoccupied points - can alwasy stay still
-        else:
-            fullRange = set()                                                       # Get full range network that can hit drone2drone
-            for drone in droneLog:
-                fullRange |= pointSupp.get_range(drone, DRONE2DRONE_SIGNAL_RANGE)                                         
-            loc = random.choice(list(fullRange - droneLog))
-        droneLog.add(loc)
-        kid[1].add(loc)
-
+        # if np.random.uniform(0,40) < 39:
+        rang = pointSupp.get_range(drone, SQRT2 * BOX_SIZE)
+        for i in range(5):
+            loc = random.choice(list(rang))
+            if loc not in droneLog:
+                break
+            loc = None
+        if loc == None:
+            loc = random.choice(list(pointSupp.get_range(drone, SQRT2 * BOX_SIZE) - droneLog))                     # Adjacent unoccupied points - can alwasy stay still 
+        # else:
+        #     fullRange = set(droneLog)                                                       # Get full range network that can hit drone2drone
+        #     for drone in droneLog:
+        #         fullRange |= pointSupp.get_range(drone, DRONE2DRONE_SIGNAL_RANGE)                                         
             
+        #     # Set subtraction is very slow, so we take pains to avoid it here.
+        #     # We use the fact that droneLog is usually sparse in fullRange, sampling points from fullRange and hoping they are not in droneLog
+        #     loc = None
+        #     for i in range(5):
+        #         loc = random.choice(list(fullRange))
+        #         if loc not in droneLog:
+        #             break
+        #         loc = None
+        #     if loc == None:
+        #         loc = random.choice(list(fullRange - droneLog))
+        droneLog.add(loc)
+        kid[1].add(loc) 
+              
 
 
     # # Small chance of spawning drone (1%)
@@ -277,7 +293,7 @@ Runs the GA but gives data on the best of every generation
 '''
 def runGA_output_all_gens(droneCount, fireCoordsRaw, culledBatchSize, unculledBatchSize, generations, lowXbound, highXbound, lowYbound, highYbound):
     pointSupp = PointMaster(BOX_SIZE, lowXbound, highXbound, lowYbound, highYbound, fireCoordsRaw)
-    
+    print(pointSupp.containedWeightedPoints)
     bests = []
     # Set initial generation
     gen = intialize_parents(droneCount, culledBatchSize, unculledBatchSize, pointSupp)
@@ -318,4 +334,4 @@ def runGA_iter_on_gen(droneCount, fireCoordsRaw, culledBatchSize, unculledBatchS
     return(bests)
 
 
-# print(runGA_output_all_gens(3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 10, 20, 3, -10, 10, 0, 40))
+print(runGA_output_all_gens(3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 10, 20, 3, -10, 10, 0, 40))

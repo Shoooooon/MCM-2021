@@ -105,7 +105,7 @@ def distribution_by_runs(n, droneCount, fireCoords, culledBatchSize, unculledBat
 
 
 testCase3 = [(-27,0),(-25,3),(0,27),(25,3),(27,0)]
-# print(distribution_by_runs(5, 6, testCase3, 10, 30, 1, -60, 60, -60, 60))
+print(distribution_by_runs(5, 3, testCase3, 10, 30, 50, -60, 60, -60, 60))
 # print(fire_coverage_distribution(50, 4, testCase3, 10, 30, 6, -60, 60, -60, 60))
 
 # [print(i) for i in distribution_by_runs(50, 10, testCase3, 10, 30, 8, -60, 60, -60, 60)]
@@ -119,6 +119,6 @@ testCase4 = [(np.random.uniform(-50.0,50.0),np.random.uniform(-50.0,50.0)) for i
 
 # [print(sum([cover*frequency/float(50) for (cover,frequency) in i.items()])) for i in a]
 
-# cProfile.run('distribution_by_runs(1, 10, testCase4, 10, 30, 20, -100, 100, -100, 100)')
-cProfile.run('distribution_by_runs(1, 6, testCase3, 10, 30, 40, -60, 60, -60, 60)')
+# cProfile.run('distribution_by_runs(1, 10, testCase4, 10, 30, 20, -200, 200, -200, 200)')
+# cProfile.run('distribution_by_runs(1, 40, testCase4, 20, 60, 100, -60, 60, -60, 60)')
 # cProfile.run('[gg.get_range((10.5,10.5,),20,60,60) for i in range(1000)]')

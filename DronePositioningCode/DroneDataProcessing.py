@@ -49,7 +49,7 @@ def run_cluster(folder_name, n, fireCoords, culledBatchSize, unculledBatchSize, 
     # Note that because of correction factor (2 drones per location) this should be 162 actual drones
     processes = []
     fireNum = len(fireCoords)
-    cap = min(150, 4 * fireNum)         # We won't need more than twice as many positions than we have fires, probably
+    cap = min(150, 2 * fireNum)         # We won't need more than twice as many positions than we have fires, probably
     (lowXbound, highXbound, lowYbound, highYbound) = find_bounding_box(fireCoords)
     # Spawn processes for each number of drones
     for dc in range(2, cap, 2):
@@ -74,10 +74,10 @@ def main():
         return 1
 
     # Set parameters for runs 
-    n = 50
-    culledBatchSize = 30
-    unculledBatchSize = 60
-    generations = 125
+    n = 3
+    culledBatchSize = 10
+    unculledBatchSize = 20
+    generations = 25
 
     row = int(sys.argv[1])
 

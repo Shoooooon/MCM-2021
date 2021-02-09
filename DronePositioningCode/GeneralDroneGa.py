@@ -316,6 +316,4 @@ def runGA_output_all_gens(droneCount, fireCoords, culledBatchSize, unculledBatch
 
     return(bests)
 
-
-
-# runGA(3, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 10, 20, 3, -10, 10, 0, 40)
+print(runGA(8, [(-10,5), (-8,6), (6,32), (0, 36), (-9,5.5)], 10, 20, 50, -30, 30, -15, 56))
