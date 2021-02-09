@@ -2,4 +2,4 @@
 MCM Spring 2021 Repo
 Bohan Wu, Kevin Zheng, Shaan Nagy
 
-![alt text](https://media.npr.org/assets/img/2016/08/03/droneinflight_wide-65e5328fb058984929a63be27deeedbf9a45a4b3.jpg)
+![alt text](https://bloximages.newyork1.vip.townnews.com/ifiberone.com/content/tncms/assets/v3/editorial/8/82/88246d38-9f5b-11e8-a835-cb2c775cdd7b/5b72269f088c8.image.png?resize=400%2C247)
