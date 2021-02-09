@@ -36,9 +36,12 @@ str(dat)
   dat$cluster = cluster
   dat$cluster_centroid_lat = cluster_centroids[,1];dat$cluster_centroid_long = cluster_centroids[,2]
 }
-#write.csv(dat,"wildfire data 2012-2021 + cluster.csv",row.names = FALSE)
+write_csv(dat,"wildfire data 2012-2021 + cluster.csv")
 
-#Then we get spatial coordiantes with python
+                                                        
+#----------------------------------------------------------
+
+#Then we get spatial coordiantes with python; run file under "data transformation"
 dat<- read_csv("wildfire data 2012-2021 + cluster.csv")
 
 dat$acq_date = as.Date(dat$acq_date,format = "%m/%d/%Y")
@@ -57,7 +60,6 @@ df1 = dat %>%   distinct(acq_date,cluster);df1$size = fire_sizes
 burned = df1 %>% group_by(acq_date) %>% summarize(area_burned = sum(size))%>%
   mutate(num_large_fire = (area_burned > 410.2))
 
-n = nrow(burned)
 ggplot(df2, aes(x = acq_date, y = log(area_burned)))+ 
   geom_line(aes(color = "red"))+
   geom_line()
@@ -86,13 +88,8 @@ burned$yearmonth <- as.yearmon(format(burned$acq_date, "%Y/%m"),format = "%Y/%m"
 autoplot(burned.xts) + xlab("Year") + ylab("Area burned (in km^2)")
 
 
-#Square Root Transformed Average Fire Size
-d = burned %>% group_by(year,month)%>%mutate(prob_fire = mean(num_large_fire),avg_size = mean(area_burned))%>%dplyr::select(prob_fire,avg_size,year)
-ggplot(d)+
-  geom_point(aes(month,prob_fire,group = year,color = year))+ylab("Probability of Extreme Fire Event") + ggtitle("Extreme Fire Probability 2012-2020, Victoria")
 
-
-#Square Root Transformed Average Fire Size During Fire Season
+#Average Monthly Fire Size Time Series
 avg_size_fire = burned %>%
   group_by(yearmonth)%>%
   mutate(fire_num = sum(num_large_fire),prob_fire = mean(num_large_fire),avg_size = mean(area_burned))%>%
@@ -102,18 +99,8 @@ ggplot(avg_size_fire)+
   geom_line(aes(yearmonth,avg_size))+xlab("Time")+
   ylab("Average Fire Size (km^2)")+ggtitle("Average Fire Size 2012-2020 From November to May")
 
-avg_size_fire$prob_fire
-
-ggplot(avg_size_fire)+
-  geom_line(aes(yearmonth,prob_fit))+xlab("Time")+
-  ylab("Probability of Extreme Fire Event")+ggtitle("Average Fire Size 2012-2020 From November to May")
-
-
-ggplot(avg_size_fire)+
-  geom_line(aes(month,avg_size,group = year))+xlab("Time")+
-  ylab("Large Fire Count")+ggtitle("Large Fire Count 2012-2020 From November to May")
-
 #--------------------------------------------------
+#Fit ARIMA
 climate <- read_csv("climate data/max temp+rainfall+solar.csv", col_types = cols(Date = col_date(format = "%Y-%m-%d")))
 climate$month <- as.numeric(format(climate$Date, "%m"))
 climate$year <- format(climate$Date, "%Y")
@@ -134,20 +121,13 @@ df_climate$avg_rainfall = df_climate$avg_rainfall%>%scale()
 Xreg = as.matrix(df_climate[,2:4])
 Xreg[,3] = na.fill(Xreg[,3],0) #fill in missing (normalized) temperature with 0
 
-new_ts = as.xts(log(firesize.xts),order.by=avg_size_fire$yearmonth)
 firesize.xts = xts(avg_size_fire$avg_size %>% log(), order.by=avg_size_fire$yearmonth) 
-prob_fire.xts = xts(avg_size_fire$prob_fire, order.by=avg_size_fire$yearmonth) 
 size_fit = auto.arima(firesize.xts,xreg = Xreg)
-prob_fit = auto.arima(prob_fire.xts,xreg = Xreg)
 
 #checkresiduals(size_fit)
 
-ggplot(avg_size_fire)+
-  geom_line(aes(month,avg_size,group = year))+xlab("Time")+
-  ylab("Large Fire Count")+ggtitle("Large Fire Count 2012-2020 From November to May")+
-  geom_line(aes(avg_size_fire$month[1:7],for_size$mean))
-
-
+#--------------------------------------------------
+#Prediction With ARIMA
 solar_2025 <- read_csv("climate data/solar 2025.csv",col_types = cols_only(rsds_djf = col_double()))
 
 max_temp_2025 <- read_csv("climate data/max temp 2025.csv",  col_types = cols_only(tasmax_djf = col_guess()))
