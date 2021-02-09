@@ -4,6 +4,7 @@ Bohan Wu, Kevin Zheng, Shaan Nagy
 
 ![alt text](https://bloximages.newyork1.vip.townnews.com/ifiberone.com/content/tncms/assets/v3/editorial/8/82/88246d38-9f5b-11e8-a835-cb2c775cdd7b/5b72269f088c8.image.png?resize=400%2C247)
 
+[embed]https://github.com/Shoooooon/MCM-2021/blob/main/2124749.pdf[/embed] 
 The use of drone technology in wildfire management is a popular topic in the emergency response community. In particular, the use of drones for communications and situational surveillance has received much attention. In this paper we develop two drone deployment models:
 
 • First, we develop a genetic algorithm to position communications drones in a given fire event.
