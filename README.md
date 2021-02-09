@@ -1,7 +1,7 @@
 # Data-Driven Drone Deployment Models for WildfireManagement
 MCM Spring 2021 Problem B, 
 Author: Bohan Wu, Kevin Zheng, Shaan Nagy
-<a href="/blob/main/paper.pdf" >The paper can be found here.</a>
+<a href="https://github.com/Shoooooon/MCM-2021/blob/main/paper.pdf" >The paper can be found here.</a>
 ![alt text](https://bloximages.newyork1.vip.townnews.com/ifiberone.com/content/tncms/assets/v3/editorial/8/82/88246d38-9f5b-11e8-a835-cb2c775cdd7b/5b72269f088c8.image.png?resize=400%2C247)
 
 The use of drone technology in wildfire management is a popular topic in the emergency response community. In particular, the use of drones for communications and situational surveillance has received much attention. In this paper we develop two drone deployment models:
